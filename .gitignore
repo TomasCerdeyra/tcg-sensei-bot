@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+data/usage_log.json
+data/rate_limit.db
+knowledge/*.json
+knowledge/*.pdf
+.venv/

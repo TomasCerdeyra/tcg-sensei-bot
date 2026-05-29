@@ -1,0 +1,48 @@
+# knowledge/meta_op15.txt
+# Última actualización: Mayo 2026
+# Formato: OP-15 Adventure on Kami's Island
+# Fuentes: Limitless TCG, opmetagame.com, onepiecetopdecks.com
+
+## TIER S (>55% winrate en regionales)
+
+### Purple Enel
+- Winrate: ~65% | Meta share: 40%+
+- Restricción: Solo usa 6 DON!! (en vez de 10)
+- Estrategia: Compensar la restricción de DON!! con efectos que abusan del trash y reanimate
+- Fortaleza: Domina el meta actual, muy consistente
+- Debilidad: Agresión temprana antes de que se estabilice
+- Counters: Decks agresivos rojos que cierren antes del turno 4-5
+
+### Black Sakazuki
+- Winrate: ~65% | Meta share: ~2.8%
+- Estrategia: Control agresivo, reducir costo de cartas rivales y KO
+- Fortaleza: Removal constante, difícil de mantener campo
+- Debilidad: Puede quedarse sin recursos si el rival es eficiente
+
+## TIER A (50-55% winrate)
+
+### Blue/Yellow Nami
+- Consistente en torneos largos
+- 2do y 4to en Treasure Cup Warsaw
+- Efecto: Al ser atacada, trashear 1 carta para subir a 7000 poder
+- Estrategia: Control defensivo con Life manipulation
+
+### Red/Blue Lucy
+- Nuevo en OP-15, basado en eventos
+- Efecto: Al atacar/ser atacado, trashear Eventos/Stages para +1000 c/u
+- Activate:Main: Robar 1 carta tras activar Evento de costo 3+
+- Key card: Viola OP15-040 (searcher de Dressrosa, costo 1)
+
+### Green/Purple Luffy
+- Winrate: ~65% | Meta share: bajo
+- Combo play con sinergias de colores
+
+## TORNEOS RECIENTES
+- Regional Barcelona: 9 Mayo 2026, 1024 jugadores, OP-15
+- Treasure Cup Warsaw: 3 Mayo 2026, 258 jugadores, OP-15
+- Regional Toronto: 16 Mayo 2026, 1024 jugadores, OP-15
+
+## PRÓXIMOS TORNEOS
+- Regional Lucca: 6 Junio 2026
+- Regional Perth: 6 Junio 2026
+- Regional Santiago: 6 Junio 2026
