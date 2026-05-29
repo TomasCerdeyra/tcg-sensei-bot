@@ -349,5 +349,7 @@ Los mazos multicolor combinan estas identidades. Ejemplo: Red/Blue mezcla presi�
 - Un mazo necesita al menos **14-18 cartas con Counter** para defenderse efectivamente.
 - La **curva de DON!!** ideal: 10-15 cartas de costo 1-2, 14-18 de costo 3-4, 8-12 de costo 5+.
 - **Double Attack** y **Banish** son keywords de alto impacto — Double Attack hace 2 daños al Líder en un ataque, Banish manda la carta de Life al trash sin Trigger.
-- Solo se puede atacar a **Personajes descansados**, nunca a los activos. Esto hace que Rush sea muy fuerte para presionar sin darle al rival la opción de bloquear.
+- Solo se puede atacar a **Personajes descansados**, nunca a los activos.
+- **Rush NO bypasea el Blocker**: Rush solo permite que el Personaje ataque el mismo turno que fue jugado. El flujo de batalla sigue siendo normal: después del Attack Declaration viene el Block Step, y el rival PUEDE usar Blocker para redirigir el ataque, incluso contra un atacante con Rush. Rush no tiene ninguna interacción con Blocker.
 - El **Block Step** ocurre antes del Counter Step — si el rival usa Blocker, los counters se aplican al Blocker, no al Líder original.
+- Un Personaje con Rush que ataca en el turno que fue jugado: queda descansado tras atacar, por lo que en el turno rival SÍ puede ser atacado.
