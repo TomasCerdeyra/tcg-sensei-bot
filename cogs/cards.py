@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from utils.card_api import (
     buscar_carta_onepiece,
+    buscar_carta_por_id,
     buscar_carta_punk_records,
     autocomplete_cartas,
 )
@@ -167,23 +168,43 @@ class Cards(commands.Cog):
     async def carta(self, interaction: discord.Interaction, nombre: str) -> None:
         await interaction.response.defer()
 
+        # Parsear formato "CARD_ID|nombre" que viene del autocomplete
+        card_id: str | None = None
+        if "|" in nombre:
+            partes = nombre.split("|", 1)
+            card_id       = partes[0].strip()
+            nombre_buscar = partes[1].strip()
+        else:
+            nombre_buscar = nombre.strip()
+
         fuente         = "Bandai oficial"
         fuente_parcial = False
+        datos          = None
 
-        try:
-            datos = await buscar_carta_onepiece(nombre)
-        except Exception:
-            datos = None
+        # 1. Bandai por ID exacto (rápido y preciso, solo si viene del autocomplete)
+        if card_id:
+            try:
+                datos = await buscar_carta_por_id(card_id)
+            except Exception:
+                datos = None
 
+        # 2. Bandai por nombre (si no hay ID o falló la búsqueda por ID)
         if not datos:
-            datos          = await buscar_carta_punk_records(nombre)
+            try:
+                datos = await buscar_carta_onepiece(nombre_buscar)
+            except Exception:
+                datos = None
+
+        # 3. Fallback punk-records (con ID para lookup exacto si está disponible)
+        if not datos:
+            datos          = await buscar_carta_punk_records(nombre_buscar, card_id=card_id)
             fuente         = "punk-records"
             fuente_parcial = True
 
         if not datos:
             await interaction.followup.send(
                 embed=embed_no_encontrado(
-                    nombre,
+                    nombre_buscar,
                     "Probá con el nombre en inglés (ej: 'Enel', 'Monkey D. Luffy').",
                 )
             )

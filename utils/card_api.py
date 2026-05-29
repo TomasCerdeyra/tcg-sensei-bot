@@ -29,6 +29,21 @@ _INDEX_TTL = 3600 * 24 * 7  # 7 días antes de re-descargar
 _INDEX_CACHE: dict = {}
 _INDEX_LOADED_AT: float = 0.0
 
+# Mapa de tipos en español → categoría punk-records
+_TYPE_KEYWORD_MAP: dict[str, str] = {
+    "lider": "Leader", "líder": "Leader", "líderes": "Leader", "lideres": "Leader",
+    "leader": "Leader", "leaders": "Leader",
+    "evento": "Event", "eventos": "Event", "event": "Event", "events": "Event",
+    "personaje": "Character", "personajes": "Character",
+    "character": "Character", "characters": "Character",
+    "escenario": "Stage", "escenarios": "Stage", "stage": "Stage", "stages": "Stage",
+}
+
+_TYPE_LABEL_ES: dict[str, str] = {
+    "Leader": "Líder", "Event": "Evento",
+    "Character": "Personaje", "Stage": "Escenario",
+}
+
 # Mapa de colores en español/variantes → nombre exacto en punk-records
 _COLOR_MAP = {
     "red": "Red", "rojo": "Red", "r": "Red",
@@ -191,6 +206,35 @@ def _parse_onepiece_html(html: str) -> list[dict]:
     return unique
 
 
+async def buscar_carta_por_id(card_id: str) -> list[dict] | None:
+    """
+    Busca una carta en Bandai por ID exacto (card_num[]=OP14-038).
+    Más rápido y preciso que la búsqueda por texto libre.
+    """
+    url = "https://en.onepiece-cardgame.com/cardlist/"
+    params = [("card_num[]", card_id), ("search", "true")]
+
+    async def _fetch() -> list[dict] | None:
+        async with aiohttp.ClientSession(headers=_BANDAI_HEADERS) as session:
+            async with session.get(
+                url, params=params,
+                timeout=aiohttp.ClientTimeout(connect=4, total=10),
+            ) as resp:
+                if resp.status == 200:
+                    html_text = await resp.text()
+                    cards = _parse_onepiece_html(html_text)
+                    return cards[:1] if cards else None
+        return None
+
+    try:
+        return await asyncio.wait_for(_fetch(), timeout=12)
+    except asyncio.TimeoutError:
+        print(f"[Bandai] timeout buscando ID '{card_id}'")
+    except Exception as e:
+        print(f"[Bandai] error buscando ID '{card_id}': {e}")
+    return None
+
+
 async def buscar_carta_onepiece(nombre: str) -> list[dict] | None:
     """
     Busca carta en Bandai (datos completos incluyendo efecto e imagen).
@@ -223,51 +267,73 @@ async def buscar_carta_onepiece(nombre: str) -> list[dict] | None:
     return None
 
 
-async def buscar_carta_punk_records(nombre: str) -> list[dict] | None:
+def _punk_record_to_dict(card_id: str, card: dict) -> dict:
+    keywords = card.get("keywords") or []
+    return {
+        "id": card_id,
+        "name": html.unescape(card.get("name", "")),
+        "type": card.get("category", ""),
+        "cost": card.get("cost"),
+        "power": card.get("power"),
+        "counter": card.get("counter"),
+        "color": "/".join(card.get("colors") or []),
+        "rarity": card.get("rarity", ""),
+        "attribute": ", ".join(card.get("attributes") or []) or None,
+        "feature": ", ".join(card.get("types") or []) or None,
+        "effect": f"[{', '.join(keywords)}]" if keywords else None,
+        "_source": "punk-records (sin efecto completo)",
+    }
+
+
+async def buscar_carta_punk_records(
+    nombre: str, card_id: str | None = None
+) -> list[dict] | None:
     """
     Fallback para /carta cuando Bandai no responde.
-    Busca en el índice local punk-records por nombre (coincidencia parcial).
-    No incluye efecto completo, pero sí stats, keywords y color.
+    Si se provee card_id, hace lookup O(1) exacto.
+    De lo contrario busca por nombre (coincidencia parcial).
     """
     index = await _load_cards_index()
     if not index:
         return None
 
+    # Lookup directo por ID (exacto, sin ambigüedad)
+    if card_id:
+        # Normalizar: ignorar sufijos de arte alternativa
+        base_id = re.sub(r"_(p|r)\d+$", "", card_id)
+        if base_id in index:
+            return [_punk_record_to_dict(base_id, index[base_id])]
+
     nombre_lower = nombre.lower().strip()
     matches: list[tuple[str, dict]] = []
 
-    for card_id, card in index.items():
-        # Ignorar artes alternativas
-        if re.search(r"_(p|r)\d+$", card_id):
+    for cid, card in index.items():
+        if re.search(r"_(p|r)\d+$", cid):
             continue
         if nombre_lower in card.get("name", "").lower():
-            matches.append((card_id, card))
+            matches.append((cid, card))
 
     if not matches:
         return None
 
-    # Ordenar: más recientes primero
     matches.sort(key=lambda x: _set_sort_key(x[0]))
+    return [_punk_record_to_dict(cid, card) for cid, card in matches[:5]]
 
-    result: list[dict] = []
-    for card_id, card in matches[:5]:
-        keywords = card.get("keywords") or []
-        result.append({
-            "id": card_id,
-            "name": card.get("name", ""),
-            "type": card.get("category", ""),
-            "cost": card.get("cost"),
-            "power": card.get("power"),
-            "counter": card.get("counter"),
-            "color": "/".join(card.get("colors") or []),
-            "rarity": card.get("rarity", ""),
-            "attribute": ", ".join(card.get("attributes") or []) or None,
-            "feature": ", ".join(card.get("types") or []) or None,
-            # Efecto sintético desde keywords (no hay texto completo en el índice)
-            "effect": f"[{', '.join(keywords)}]" if keywords else None,
-            "_source": "punk-records (sin efecto completo)",
-        })
-    return result
+
+def _parse_type_hints(query: str) -> tuple[str | None, str]:
+    """
+    Extrae un hint de tipo del inicio del query.
+    "evento luffy" → ("Event", "luffy")
+    "lider" → ("Leader", "")
+    "personaje nami" → ("Character", "nami")
+    """
+    words = query.lower().strip().split()
+    if not words:
+        return None, query
+    type_filter = _TYPE_KEYWORD_MAP.get(words[0])
+    if type_filter:
+        return type_filter, " ".join(words[1:])
+    return None, query
 
 
 def _parse_color_hints(nombre: str) -> tuple[list[str], str]:
@@ -438,22 +504,25 @@ async def _buscar_cartas_bandai_color(
 
 async def autocomplete_cartas(query: str) -> list[tuple[str, str]]:
     """
-    Devuelve hasta 25 cartas que coincidan con el query para autocomplete de Discord.
-    Busca en todos los tipos (Personajes, Eventos, Stages, Líderes).
-    Retorna lista de (label_para_mostrar, value_para_enviar).
+    Devuelve hasta 25 cartas para autocomplete de Discord.
+    Soporta filtros por tipo: "evento luffy", "lider", "personaje nami", "escenario".
+    El value incluye el ID para lookup exacto: "OP15-023|Nami".
     """
     index = await _load_cards_index()
     if not index:
         return []
 
-    query_lower = query.lower().strip()
+    type_filter, name_query = _parse_type_hints(query)
+    query_lower = name_query.lower().strip()
+
     matches: list[tuple[str, dict]] = []
 
     for card_id, card in index.items():
-        # Ignorar artes alternativas y cartas Don!!
         if re.search(r"_(p|r)\d+$", card_id):
             continue
         if card.get("category") == "Don":
+            continue
+        if type_filter and card.get("category") != type_filter:
             continue
         card_name = card.get("name", "").lower()
         if query_lower and query_lower not in card_name:
@@ -463,7 +532,6 @@ async def autocomplete_cartas(query: str) -> list[tuple[str, str]]:
     if not matches:
         return []
 
-    # Más recientes primero
     matches.sort(key=lambda x: _set_sort_key(x[0]))
 
     result: list[tuple[str, str]] = []
@@ -473,10 +541,12 @@ async def autocomplete_cartas(query: str) -> list[tuple[str, str]]:
         color    = "/".join(card.get("colors") or [])
         category = card.get("category", "")
         cost     = card.get("cost")
+        type_es  = _TYPE_LABEL_ES.get(category, category)
 
         cost_str = f" c:{cost}" if cost is not None else ""
-        label = f"{name} [{color}]{cost_str} — {card_id} {category}"
-        value = name  # nombre decodificado para que Bandai lo busque bien
+        label = f"{name} [{color}]{cost_str} — {card_id} {type_es}"
+        # Value incluye el ID para que el comando haga lookup exacto
+        value = f"{card_id}|{name}"
 
         result.append((label[:100], value[:100]))
         if len(result) >= 25:
