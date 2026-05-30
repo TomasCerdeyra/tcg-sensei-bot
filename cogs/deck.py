@@ -23,7 +23,7 @@ REGLAS OBLIGATORIAS de One Piece TCG (aplicá sin excepción):
 - El mazo principal tiene EXACTAMENTE 50 cartas. El líder y el mazo Don!! son aparte y NO se cuentan.
 - Máximo 4 copias del mismo número de carta.
 - Solo cartas del color del líder elegido.
-- ANTES de escribir el mazo, sumá las cantidades línea por línea y verificá que den 50 exactas. Si no dan 50, corregí.
+- Antes de escribir la lista final, contá INTERNAMENTE las cartas línea por línea. Si no dan 50, ajustá cantidades hasta que den exactamente 50. NO incluyas ese conteo ni verificación en tu respuesta — es un paso interno tuyo.
 
 CRITERIOS ESTRATÉGICOS que DEBÉS cumplir:
 1. COUNTER (defensa): incluí 14-18 cartas con valor counter (ctr 1000 o 2000). Sin counters el mazo pierde.
@@ -218,10 +218,13 @@ class Deck(commands.Cog):
             f"{pool_texto}"
             f"Armame un mazo competitivo de One Piece TCG para el líder '{lider}' "
             f"(presupuesto: {pres}, estilo: {est}).\n\n"
-            "REGLA ABSOLUTA: Tomá siempre la mejor decisión posible con los datos disponibles. "
-            "NUNCA hagas preguntas. NUNCA pidas aclaraciones. "
-            "Si hay ambigüedad, elegí la opción más competitiva para el meta OP-15 y ejecutá.\n\n"
-            "Seguí este formato EXACTO:\n\n"
+            "REGLAS DE EJECUCIÓN — OBLIGATORIAS:\n"
+            "1. NUNCA hagas preguntas. NUNCA pidas aclaraciones. NUNCA menciones limitaciones del pool.\n"
+            "2. Si el pool no tiene suficientes cartas para llegar a 50, completá con cartas reales del mismo color "
+            "que conozcas de OP-15 (sets recientes primero). Ejecutá siempre.\n"
+            "3. PROHIBIDO incluir en la respuesta: secciones de verificación, totales matemáticos, "
+            "conteos de cartas, notas sobre el pool, ni justificaciones. Solo el formato exacto de abajo.\n\n"
+            "FORMATO EXACTO (no agregar nada fuera de estas secciones):\n\n"
             "**LÍDER:** [nombre y color]\n\n"
             "**MAZO (50 cartas exactas):**\n"
             "4x NombreCarta #EXP\n"
@@ -229,10 +232,11 @@ class Deck(commands.Cog):
             "**ESTRATEGIA:** [2-3 oraciones: win condition, curva y cómo se activa la sinergia principal]\n\n"
             "**FAVORABLE vs:** [mazo] — [razón mecánica]\n"
             "**DIFÍCIL vs:** [mazo] — [razón mecánica]\n\n"
-            "FORMATO:\n"
+            "NOTAS DE FORMATO:\n"
             "- '4x NombreCarta #EXP' (ej: 4x Enel #OP15, 3x Nola #OP15)\n"
             "- Si no sabés la expansión, solo el nombre\n"
-            "- NO inventar nombres de cartas"
+            "- NO inventar nombres de cartas\n"
+            "- NO agregar texto después de DIFÍCIL vs"
         )
 
         try:
