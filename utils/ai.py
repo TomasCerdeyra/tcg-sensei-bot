@@ -8,6 +8,16 @@ from config import AI_MAX_TOKENS, AI_MODEL
 _knowledge_cache: dict = {"content": "", "last_loaded": 0}
 RELOAD_INTERVAL = 3600  # recargar cada 1 hora
 
+_client: AsyncAnthropic | None = None
+
+
+def _get_client() -> AsyncAnthropic:
+    global _client
+    api_key = os.getenv("ANTHROPIC_API_KEY")
+    if _client is None:
+        _client = AsyncAnthropic(api_key=api_key)
+    return _client
+
 # Directorio base del proyecto (un nivel arriba de utils/)
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -63,7 +73,7 @@ async def ask_coach(
     tokens = max_tokens or AI_MAX_TOKENS
 
     try:
-        client = AsyncAnthropic(api_key=api_key)
+        client = _get_client()
         message = await client.messages.create(
             model=AI_MODEL,
             max_tokens=tokens,

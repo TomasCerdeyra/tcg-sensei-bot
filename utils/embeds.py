@@ -21,11 +21,12 @@ def embed_limite() -> discord.Embed:
         description=(
             "Usaste tus **10 consultas** de este comando para hoy.\n"
             "El contador se reinicia a medianoche.\n\n"
-            "Cada comando tiene su propio límite de 10/día:\n"
+            "Cada comando IA tiene su propio límite de 10/día:\n"
             "- `/coach` — 10 preguntas libres\n"
             "- `/mazo` — 10 sugerencias de mazo\n"
-            "- `/matchup` — 10 análisis de matchup\n\n"
-            "Los comandos `/meta` y `/carta` son **ilimitados**."
+            "- `/matchup` — 10 análisis de matchup\n"
+            "- `/regla` — 10 consultas complejas (glosario es ilimitado)\n\n"
+            "Los comandos `/meta`, `/carta`, `/precio` y `/resumen-reglas` son **ilimitados**."
         ),
         color=COLORS["limit"],
     )

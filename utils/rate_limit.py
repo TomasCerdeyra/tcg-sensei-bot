@@ -16,6 +16,7 @@ _LIMITES: dict[str, int] = {
     "coach":   AI_DAILY_LIMIT,
     "mazo":    AI_DAILY_LIMIT,
     "matchup": AI_DAILY_LIMIT,
+    "regla":   AI_DAILY_LIMIT,
     "_global": AI_DAILY_LIMIT,
 }
 

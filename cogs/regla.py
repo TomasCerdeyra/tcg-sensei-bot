@@ -3,7 +3,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from utils.ai import ask_coach
-from utils.embeds import embed_error
+from utils.rate_limit import puede_usar, get_uso
+from utils.embeds import embed_error, embed_limite
 from config import COLORS
 
 REGLA_MAX_TOKENS = 500
@@ -253,7 +254,13 @@ class Regla(commands.Cog):
             await interaction.response.send_message(embed=embed)
             return
 
-        # 2. IA para preguntas complejas
+        # 2. IA para preguntas complejas — verificar rate limit
+        if not puede_usar(interaction.user.id, "regla"):
+            await interaction.response.send_message(
+                embed=embed_limite(), ephemeral=True
+            )
+            return
+
         await interaction.response.defer()
 
         prompt = (
