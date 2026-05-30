@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -121,11 +122,11 @@ class Deck(commands.Cog):
 
     # ── Comando /mazo ─────────────────────────────────────────────────────────
 
-    @app_commands.command(name="mazo", description="🏗️ Te ayudo a armar un mazo competitivo")
+    @app_commands.command(name="mazo", description="🏗️ Armá un mazo competitivo — todos los parámetros son opcionales")
     @app_commands.describe(
-        lider="Líder que querés usar — escribí para ver sugerencias",
-        presupuesto="Tu presupuesto aproximado",
-        estilo="Estilo de juego preferido",
+        lider="Líder que querés usar (opcional — el coach elige el mejor si no ponés nada)",
+        presupuesto="Tu presupuesto aproximado (opcional)",
+        estilo="Estilo de juego preferido (opcional)",
     )
     @app_commands.autocomplete(lider=_autocomplete_lider)
     @app_commands.choices(
@@ -144,9 +145,9 @@ class Deck(commands.Cog):
     async def mazo(
         self,
         interaction: discord.Interaction,
-        lider: str,
-        presupuesto: app_commands.Choice[str] = None,
-        estilo: app_commands.Choice[str] = None,
+        lider: Optional[str] = None,
+        presupuesto: Optional[app_commands.Choice[str]] = None,
+        estilo: Optional[app_commands.Choice[str]] = None,
     ) -> None:
         if not puede_usar(interaction.user.id, "mazo"):
             await interaction.response.send_message(
@@ -159,84 +160,86 @@ class Deck(commands.Cog):
         pres = presupuesto.value if presupuesto else "medio"
         est = estilo.value if estilo else "flexible"
 
-        # Paso 1: buscar TODOS los líderes que coincidan con el nombre
-        # (punk-records, sin depender del scraper de Bandai)
-        all_leaders = await buscar_lideres_por_nombre(lider)
-
-        # Si punk-records no encontró nada, fallback al scraper Bandai
-        if not all_leaders:
-            leader_results = await buscar_carta_onepiece(lider)
-            fallback_colors = _extraer_colores(leader_results) if leader_results else []
-            all_leaders = [
-                {"id": "?", "name": lider, "colors": fallback_colors, "color": "/".join(fallback_colors)}
-            ] if fallback_colors else []
-
-        # Unión de todos los colores de todos los líderes encontrados
+        all_leaders: list[dict] = []
         all_colors: list[str] = []
-        seen_colors: set[str] = set()
-        for l in all_leaders:
-            for c in l.get("colors") or []:
-                if c not in seen_colors:
-                    seen_colors.add(c)
-                    all_colors.append(c)
-
-        # Paso 2: pool de cartas de todos los colores combinados
         pool_texto = ""
-        if all_colors:
-            # Aumentar límite porque puede haber varios colores mezclados
-            pool_limit = min(50 + 10 * len(all_colors), 80)
-            pool_cards = await buscar_cartas_por_color(all_colors, limite=pool_limit)
-            if pool_cards:
-                pool_texto = (
-                    f"POOL DE CARTAS REALES disponibles "
-                    f"(colores: {'/'.join(all_colors)}, sets más recientes primero):\n"
-                    f"{_formatear_pool(pool_cards)}\n\n"
-                    "Usá estas cartas como base. Si necesitás completar el mazo y el pool no alcanza, "
-                    "podés agregar cartas conocidas del mismo color SIN inventar nombres ni expansiones.\n\n"
-                )
 
-        # Sección de líderes disponibles
-        if len(all_leaders) > 1:
+        if lider:
+            # Buscar líderes por nombre en punk-records
+            all_leaders = await buscar_lideres_por_nombre(lider)
+
+            # Fallback al scraper de Bandai si punk-records no encontró nada
+            if not all_leaders:
+                leader_results = await buscar_carta_onepiece(lider)
+                fallback_colors = _extraer_colores(leader_results) if leader_results else []
+                all_leaders = [
+                    {"id": "?", "name": lider, "colors": fallback_colors, "color": "/".join(fallback_colors)}
+                ] if fallback_colors else []
+
+            # Unión de todos los colores
+            seen_colors: set[str] = set()
+            for l in all_leaders:
+                for c in l.get("colors") or []:
+                    if c not in seen_colors:
+                        seen_colors.add(c)
+                        all_colors.append(c)
+
+            # Pool de cartas del color del líder
+            if all_colors:
+                pool_limit = min(50 + 10 * len(all_colors), 80)
+                pool_cards = await buscar_cartas_por_color(all_colors, limite=pool_limit)
+                if pool_cards:
+                    pool_texto = (
+                        f"POOL DE CARTAS REALES disponibles "
+                        f"(colores: {'/'.join(all_colors)}, sets más recientes primero):\n"
+                        f"{_formatear_pool(pool_cards)}\n\n"
+                        "Usá estas cartas como base. Si el pool no alcanza 50, completá con "
+                        "cartas reales del mismo color que conozcas de OP-15.\n\n"
+                    )
+
+        # Sección de líderes en el prompt
+        if lider and len(all_leaders) > 1:
             leaders_section = (
                 f"LÍDERES DISPONIBLES con el nombre '{lider}':\n"
                 f"{_formatear_lideres(all_leaders)}\n\n"
-                f"ELEGÍ el líder más competitivo y meta-relevante para OP-15 "
-                f"según tu conocimiento del meta actual. "
-                f"Construí el mazo SOLO con cartas del color de ese líder.\n\n"
+                "ELEGÍ el líder más competitivo para OP-15. "
+                "Construí el mazo SOLO con cartas de su color.\n\n"
             )
-        elif all_leaders:
+        elif lider and all_leaders:
             leaders_section = (
                 f"LÍDER: {all_leaders[0]['name']} ({all_leaders[0]['id']}) — "
                 f"Color: {all_leaders[0]['color']}\n\n"
             )
+        elif lider:
+            leaders_section = f"Líder pedido: '{lider}' (no encontrado en el índice — usá tu conocimiento del meta OP-15).\n\n"
         else:
-            leaders_section = ""
+            leaders_section = (
+                "No se especificó líder. Elegí el líder más competitivo de OP-15 "
+                f"para presupuesto '{pres}' y estilo '{est}', y armá el mazo con su color.\n\n"
+            )
+
+        lider_display = lider or "meta OP-15"
 
         prompt = (
             f"{_DECKBUILDING_RULES}\n"
             f"{leaders_section}"
             f"{pool_texto}"
-            f"Armame un mazo competitivo de One Piece TCG para el líder '{lider}' "
+            f"Armame un mazo competitivo de One Piece TCG "
             f"(presupuesto: {pres}, estilo: {est}).\n\n"
             "REGLAS DE EJECUCIÓN — OBLIGATORIAS:\n"
-            "1. NUNCA hagas preguntas. NUNCA pidas aclaraciones. NUNCA menciones limitaciones del pool.\n"
-            "2. Si el pool no tiene suficientes cartas para llegar a 50, completá con cartas reales del mismo color "
-            "que conozcas de OP-15 (sets recientes primero). Ejecutá siempre.\n"
-            "3. PROHIBIDO incluir en la respuesta: secciones de verificación, totales matemáticos, "
-            "conteos de cartas, notas sobre el pool, ni justificaciones. Solo el formato exacto de abajo.\n\n"
-            "FORMATO EXACTO (no agregar nada fuera de estas secciones):\n\n"
+            "1. NUNCA hagas preguntas ni pidas aclaraciones. Ejecutá siempre con criterio propio.\n"
+            "2. Si el pool no alcanza 50, completá con cartas reales del mismo color. Nunca menciones el tamaño del pool.\n"
+            "3. PROHIBIDO en la respuesta: secciones de verificación, totales matemáticos, conteos, "
+            "notas sobre el pool, justificaciones o cualquier texto fuera del formato de abajo.\n\n"
+            "FORMATO EXACTO:\n\n"
             "**LÍDER:** [nombre y color]\n\n"
             "**MAZO (50 cartas exactas):**\n"
             "4x NombreCarta #EXP\n"
+            "3x OtraCarta\n"
             "...\n\n"
-            "**ESTRATEGIA:** [2-3 oraciones: win condition, curva y cómo se activa la sinergia principal]\n\n"
+            "**ESTRATEGIA:** [2-3 oraciones: win condition, curva, sinergia principal]\n\n"
             "**FAVORABLE vs:** [mazo] — [razón mecánica]\n"
-            "**DIFÍCIL vs:** [mazo] — [razón mecánica]\n\n"
-            "NOTAS DE FORMATO:\n"
-            "- '4x NombreCarta #EXP' (ej: 4x Enel #OP15, 3x Nola #OP15)\n"
-            "- Si no sabés la expansión, solo el nombre\n"
-            "- NO inventar nombres de cartas\n"
-            "- NO agregar texto después de DIFÍCIL vs"
+            "**DIFÍCIL vs:** [mazo] — [razón mecánica]"
         )
 
         try:
@@ -247,23 +250,36 @@ class Deck(commands.Cog):
             )
             return
 
+        # ── Retry automático si el conteo no da 50 ───────────────────────────
+        total_cartas = _contar_cartas(respuesta)
+        if total_cartas != 50 and total_cartas > 0:
+            fix_prompt = (
+                f"El mazo que generaste tiene {total_cartas} cartas en vez de 50 exactas.\n\n"
+                f"Tu respuesta fue:\n{respuesta}\n\n"
+                "Corregí SOLO las cantidades de la lista de cartas para que sumen exactamente 50. "
+                "Podés subir o bajar copias de cartas existentes (ej: de 4x a 3x, de 2x a 3x). "
+                "Respondé con el formato completo corregido sin agregar secciones nuevas."
+            )
+            try:
+                respuesta = await ask_coach(fix_prompt, max_tokens=DECK_MAX_TOKENS)
+                total_cartas = _contar_cartas(respuesta)
+            except Exception:
+                pass  # Si el retry falla, usamos la respuesta original
+
         if len(respuesta) > 4000:
             respuesta = respuesta[:3997] + "..."
 
-        total_cartas = _contar_cartas(respuesta)
-        aviso_count = ""
-        if total_cartas == 50:
-            aviso_count = "50/50 cartas ✓"
-        elif total_cartas > 0:
-            aviso_count = f"{total_cartas}/50 cartas ⚠️"
+        aviso_count = "50/50 cartas ✓" if total_cartas == 50 else (
+            f"{total_cartas}/50 cartas ⚠️" if total_cartas > 0 else ""
+        )
 
         count = get_uso(interaction.user.id, "mazo")
         embed = discord.Embed(
-            title=f"🏗️ Mazo: {lider.title()}",
+            title=f"🏗️ Mazo: {lider_display.title()}",
             description=respuesta,
             color=COLORS["deck"],
         )
-        colores_str = "/".join(all_colors) if all_colors else "?"
+        colores_str = "/".join(all_colors) if all_colors else "meta"
         footer_parts = [p for p in [
             aviso_count,
             f"Pool: {colores_str}",
