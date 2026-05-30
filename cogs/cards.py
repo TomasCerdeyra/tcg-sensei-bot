@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 from utils.card_api import (
     buscar_carta_onepiece,
+    buscar_carta_por_id,
     buscar_carta_punk_records,
     autocomplete_cartas,
 )
@@ -180,13 +181,21 @@ class Cards(commands.Cog):
         fuente_parcial = False
         datos          = None
 
-        # 1. Bandai por nombre (efecto completo + imagen)
-        try:
-            datos = await buscar_carta_onepiece(nombre_buscar)
-        except Exception:
-            datos = None
+        if card_id:
+            # Vino del autocomplete: buscar Bandai con el ID exacto como freewords
+            # (ej: "OP15-051") → Bandai devuelve exactamente esa carta con efecto completo
+            try:
+                datos = await buscar_carta_por_id(card_id)
+            except Exception:
+                datos = None
+        else:
+            # El usuario escribió el nombre manualmente → buscar por nombre en Bandai
+            try:
+                datos = await buscar_carta_onepiece(nombre_buscar)
+            except Exception:
+                datos = None
 
-        # 2. Fallback punk-records — usa el ID del autocomplete para lookup exacto
+        # Fallback punk-records: lookup exacto por ID si está disponible
         if not datos:
             datos          = await buscar_carta_punk_records(nombre_buscar, card_id=card_id)
             fuente         = "punk-records"

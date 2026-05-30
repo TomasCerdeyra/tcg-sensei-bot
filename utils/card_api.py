@@ -208,11 +208,11 @@ def _parse_onepiece_html(html: str) -> list[dict]:
 
 async def buscar_carta_por_id(card_id: str) -> list[dict] | None:
     """
-    Busca una carta en Bandai por ID exacto (card_num[]=OP14-038).
-    Más rápido y preciso que la búsqueda por texto libre.
+    Busca una carta en Bandai usando el ID como freewords (ej: 'OP15-051').
+    Bandai devuelve exactamente 1 carta con efecto completo e imagen.
     """
     url = "https://en.onepiece-cardgame.com/cardlist/"
-    params = [("card_num[]", card_id), ("search", "true")]
+    params = {"freewords": card_id, "search": "true"}
 
     async def _fetch() -> list[dict] | None:
         async with aiohttp.ClientSession(headers=_BANDAI_HEADERS) as session:
