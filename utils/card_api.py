@@ -502,6 +502,108 @@ async def _buscar_cartas_bandai_color(
     return None
 
 
+async def _fetch_effects_batch(card_ids: list[str]) -> dict[str, str]:
+    """
+    Descarga efectos de múltiples cartas en paralelo desde Bandai.
+    Usa una sola sesión aiohttp con semáforo para no saturar el servidor.
+    """
+    semaphore = asyncio.Semaphore(12)
+    url = "https://en.onepiece-cardgame.com/cardlist/"
+    effects: dict[str, str] = {}
+
+    async def fetch_one(session: aiohttp.ClientSession, card_id: str) -> None:
+        async with semaphore:
+            try:
+                params = {"freewords": card_id, "search": "true"}
+                async with session.get(
+                    url, params=params,
+                    timeout=aiohttp.ClientTimeout(connect=4, total=10),
+                ) as resp:
+                    if resp.status == 200:
+                        html_text = await resp.text()
+                        cards = _parse_onepiece_html(html_text)
+                        if cards:
+                            effects[card_id] = cards[0].get("effect", "") or ""
+            except Exception:
+                pass  # carta sin efecto — continúa
+
+    try:
+        async with aiohttp.ClientSession(headers=_BANDAI_HEADERS) as session:
+            await asyncio.wait_for(
+                asyncio.gather(*[fetch_one(session, cid) for cid in card_ids]),
+                timeout=18,
+            )
+    except asyncio.TimeoutError:
+        print(f"[effects batch] Timeout — {len(effects)}/{len(card_ids)} efectos obtenidos")
+    except Exception as e:
+        print(f"[effects batch] Error: {e}")
+
+    return effects
+
+
+async def buscar_pool_para_mazo(colores: list[str]) -> list[dict]:
+    """
+    Pool para deckbuilding con efectos completos.
+    - Punk-records para filtrado correcto por color (todas las cartas del juego).
+    - Bandai para efectos, pero solo para las 40 cartas más recientes (en paralelo).
+    - Cartas más antiguas se incluyen con stats únicamente.
+    """
+    index = await _load_cards_index()
+    if not index:
+        return []
+
+    normalized: set[str] = {
+        _COLOR_MAP.get(c.lower().strip(), c.capitalize()) for c in colores
+    }
+
+    candidates: list[tuple[str, dict]] = []
+    seen_names: set[str] = set()
+
+    for card_id, card in index.items():
+        if re.search(r"_(p|r)\d+$", card_id):
+            continue
+        if card.get("category") in ("Don", "Leader"):
+            continue
+        card_colors: set[str] = set(card.get("colors") or [])
+        if not card_colors & normalized:
+            continue
+        name = card.get("name", "")
+        if not name or name in seen_names:
+            continue
+        seen_names.add(name)
+        candidates.append((card_id, card))
+
+    if not candidates:
+        return []
+
+    candidates.sort(key=lambda x: _set_sort_key(x[0]))
+    top = candidates[:80]  # hasta 80 cartas en el pool
+
+    # Fetch de efectos solo para las 40 más recientes (sets nuevos = más meta-relevantes)
+    recent_ids = [cid for cid, _ in top[:40]]
+    effects = await _fetch_effects_batch(recent_ids)
+
+    result: list[dict] = []
+    for card_id, card in top:
+        key_kw = [k for k in (card.get("keywords") or []) if k in ("Rush", "Blocker", "Trigger")]
+        result.append({
+            "id": card_id,
+            "name": html.unescape(card.get("name", "")),
+            "type": card.get("category", ""),
+            "cost": card.get("cost"),
+            "power": card.get("power"),
+            "counter": card.get("counter"),
+            "color": "/".join(card.get("colors") or []),
+            "rarity": card.get("rarity", ""),
+            "keywords": key_kw,
+            "effect": effects.get(card_id, ""),
+        })
+
+    con_efecto = sum(1 for c in result if c["effect"])
+    print(f"[pool mazo] {len(result)} cartas ({con_efecto} con efecto) para colores {list(normalized)}")
+    return result
+
+
 async def autocomplete_cartas(query: str) -> list[tuple[str, str]]:
     """
     Devuelve hasta 25 cartas para autocomplete de Discord.

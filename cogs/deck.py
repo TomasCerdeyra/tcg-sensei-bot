@@ -6,7 +6,8 @@ from discord import app_commands
 from utils.ai import ask_coach
 from utils.card_api import (
     buscar_carta_onepiece,
-    buscar_cartas_por_color,
+    buscar_carta_por_id,
+    buscar_pool_para_mazo,
     buscar_lideres_por_nombre,
     autocomplete_lideres,
 )
@@ -71,7 +72,7 @@ def _extraer_colores(leader_cards: list[dict]) -> list[str]:
 
 
 def _formatear_pool(cards: list[dict]) -> str:
-    """Formatea el pool con todos los datos relevantes para deckbuilding."""
+    """Formatea el pool con datos completos incluyendo efecto para deckbuilding."""
     lineas = []
     for c in cards:
         card_id = c.get("id", "")
@@ -87,7 +88,10 @@ def _formatear_pool(cards: list[dict]) -> str:
         kw_list: list[str] = c.get("keywords") or []
         kw_str = f" [{', '.join(kw_list)}]" if kw_list else ""
 
-        lineas.append(f"- {c['name']}{exp} ({tipo}{costo}{poder}{counter}{kw_str})")
+        efecto = (c.get("effect") or "").strip()
+        efecto_str = f"\n  → {efecto[:160]}" if efecto else ""
+
+        lineas.append(f"- {c['name']}{exp} ({tipo}{costo}{poder}{counter}{kw_str}){efecto_str}")
     return "\n".join(lineas)
 
 
@@ -163,6 +167,7 @@ class Deck(commands.Cog):
         all_leaders: list[dict] = []
         all_colors: list[str] = []
         pool_texto = ""
+        leader_effect = ""
 
         if lider:
             # Buscar líderes por nombre en punk-records
@@ -184,17 +189,24 @@ class Deck(commands.Cog):
                         seen_colors.add(c)
                         all_colors.append(c)
 
-            # Pool de cartas del color del líder
+            # Efecto del líder desde Bandai (solo match único para no agregar latencia)
+            if len(all_leaders) == 1:
+                leader_id = all_leaders[0].get("id", "")
+                if leader_id and leader_id != "?":
+                    bandai_leader = await buscar_carta_por_id(leader_id)
+                    if bandai_leader:
+                        leader_effect = bandai_leader[0].get("effect", "")
+
+            # Pool completo con efectos desde Bandai
             if all_colors:
-                pool_limit = min(50 + 10 * len(all_colors), 80)
-                pool_cards = await buscar_cartas_por_color(all_colors, limite=pool_limit)
+                pool_cards = await buscar_pool_para_mazo(all_colors)
                 if pool_cards:
                     pool_texto = (
-                        f"POOL DE CARTAS REALES disponibles "
-                        f"(colores: {'/'.join(all_colors)}, sets más recientes primero):\n"
+                        f"POOL DE CARTAS DISPONIBLES "
+                        f"(colores: {'/'.join(all_colors)}, {len(pool_cards)} cartas con efectos completos):\n"
                         f"{_formatear_pool(pool_cards)}\n\n"
-                        "Usá estas cartas como base. Si el pool no alcanza 50, completá con "
-                        "cartas reales del mismo color que conozcas de OP-15.\n\n"
+                        "RESTRICCIÓN ABSOLUTA: Solo podés usar cartas de este pool. "
+                        "No uses cartas que no estén en esta lista.\n\n"
                     )
 
         # Sección de líderes en el prompt
@@ -206,9 +218,10 @@ class Deck(commands.Cog):
                 "Construí el mazo SOLO con cartas de su color.\n\n"
             )
         elif lider and all_leaders:
+            effect_str = f"\nEfecto del líder: {leader_effect}" if leader_effect else ""
             leaders_section = (
                 f"LÍDER: {all_leaders[0]['name']} ({all_leaders[0]['id']}) — "
-                f"Color: {all_leaders[0]['color']}\n\n"
+                f"Color: {all_leaders[0]['color']}{effect_str}\n\n"
             )
         elif lider:
             leaders_section = f"Líder pedido: '{lider}' (no encontrado en el índice — usá tu conocimiento del meta OP-15).\n\n"
@@ -220,6 +233,12 @@ class Deck(commands.Cog):
 
         lider_display = lider or "meta OP-15"
 
+        pool_rule = (
+            "2. Usá ÚNICAMENTE cartas del pool provisto. No uses cartas que no estén en esa lista.\n"
+            if pool_texto else
+            "2. Usá únicamente cartas reales y conocidas de One Piece TCG.\n"
+        )
+
         prompt = (
             f"{_DECKBUILDING_RULES}\n"
             f"{leaders_section}"
@@ -228,7 +247,7 @@ class Deck(commands.Cog):
             f"(presupuesto: {pres}, estilo: {est}).\n\n"
             "REGLAS DE EJECUCIÓN — OBLIGATORIAS:\n"
             "1. NUNCA hagas preguntas ni pidas aclaraciones. Ejecutá siempre con criterio propio.\n"
-            "2. Si el pool no alcanza 50, completá con cartas reales del mismo color. Nunca menciones el tamaño del pool.\n"
+            f"{pool_rule}"
             "3. PROHIBIDO en la respuesta: secciones de verificación, totales matemáticos, conteos, "
             "notas sobre el pool, justificaciones o cualquier texto fuera del formato de abajo.\n\n"
             "FORMATO EXACTO:\n\n"
@@ -250,21 +269,7 @@ class Deck(commands.Cog):
             )
             return
 
-        # ── Retry automático si el conteo no da 50 ───────────────────────────
         total_cartas = _contar_cartas(respuesta)
-        if total_cartas != 50 and total_cartas > 0:
-            fix_prompt = (
-                f"El mazo que generaste tiene {total_cartas} cartas en vez de 50 exactas.\n\n"
-                f"Tu respuesta fue:\n{respuesta}\n\n"
-                "Corregí SOLO las cantidades de la lista de cartas para que sumen exactamente 50. "
-                "Podés subir o bajar copias de cartas existentes (ej: de 4x a 3x, de 2x a 3x). "
-                "Respondé con el formato completo corregido sin agregar secciones nuevas."
-            )
-            try:
-                respuesta = await ask_coach(fix_prompt, max_tokens=DECK_MAX_TOKENS)
-                total_cartas = _contar_cartas(respuesta)
-            except Exception:
-                pass  # Si el retry falla, usamos la respuesta original
 
         if len(respuesta) > 4000:
             respuesta = respuesta[:3997] + "..."
