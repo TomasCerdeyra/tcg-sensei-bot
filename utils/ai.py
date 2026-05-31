@@ -3,7 +3,7 @@ import time
 import json
 
 from anthropic import AsyncAnthropic
-from config import AI_MAX_TOKENS, AI_MODEL
+from config import AI_MAX_TOKENS, AI_MODEL, AI_MODEL_DECK
 
 _knowledge_cache: dict = {"content": "", "last_loaded": 0}
 RELOAD_INTERVAL = 3600  # recargar cada 1 hora
@@ -61,6 +61,7 @@ async def ask_coach(
     pregunta: str,
     contexto: str = "",
     max_tokens: int | None = None,
+    model: str | None = None,
 ) -> str:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key or api_key == "pendiente":
@@ -71,11 +72,12 @@ async def ask_coach(
         user_message = f"Contexto adicional: {contexto}\n\nPregunta: {pregunta}"
 
     tokens = max_tokens or AI_MAX_TOKENS
+    model_id = model or AI_MODEL
 
     try:
         client = _get_client()
         message = await client.messages.create(
-            model=AI_MODEL,
+            model=model_id,
             max_tokens=tokens,
             system=load_knowledge(),
             messages=[{"role": "user", "content": user_message}],

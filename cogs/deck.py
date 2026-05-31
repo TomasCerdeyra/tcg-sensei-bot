@@ -14,7 +14,7 @@ from utils.card_api import (
 from utils.rate_limit import puede_usar, get_uso
 from utils.logger import log_usage
 from utils.embeds import embed_limite, embed_error
-from config import COLORS, AI_MAX_TOKENS_DECK
+from config import COLORS, AI_MAX_TOKENS_DECK, AI_MODEL_DECK
 
 # Suficiente para 50 cartas bien explicadas + estrategia
 DECK_MAX_TOKENS = AI_MAX_TOKENS_DECK
@@ -50,14 +50,62 @@ CRITERIOS ESTRATÉGICOS que DEBÉS cumplir:
 
 
 def _contar_cartas(texto: str) -> int:
-    """
-    Cuenta el total de cartas sumando las cantidades en líneas con formato 'Nx Nombre'.
-    Acepta variantes: '4x', '4X', '4 x', '(4)', '4 cartas'.
-    """
+    """Suma las cantidades en todas las líneas con formato 'Nx Nombre'."""
     total = 0
     for m in re.finditer(r"^\s*(\d+)\s*[xX]", texto, re.MULTILINE):
         total += int(m.group(1))
     return total
+
+
+def _ajustar_a_50(respuesta: str) -> str:
+    """
+    Ajusta las cantidades de la lista de cartas para que sumen exactamente 50.
+    No llama a la API — opera directamente sobre el texto generado por Claude.
+    Modifica el mínimo de líneas posible: sube/baja copies de cartas existentes.
+    Respeta el límite de 4 copias por carta y el mínimo de 1.
+    """
+    total = _contar_cartas(respuesta)
+    if total == 50:
+        return respuesta
+
+    lineas = respuesta.split("\n")
+    patron = re.compile(r"^(\s*)(\d+)(\s*[xX])(.+)$")
+
+    # Localizar índice y cantidad de cada línea de carta
+    entradas: list[tuple[int, int]] = []
+    for i, linea in enumerate(lineas):
+        if patron.match(linea):
+            m = patron.match(linea)
+            entradas.append((i, int(m.group(2))))  # type: ignore[union-attr]
+
+    if not entradas:
+        return respuesta
+
+    diferencia = 50 - total  # positivo = faltan cartas, negativo = sobran
+
+    def _set_qty(linea: str, nueva_qty: int) -> str:
+        return re.sub(r"^(\s*)\d+", lambda m: f"{m.group(1)}{nueva_qty}", linea)
+
+    if diferencia > 0:
+        # Faltan cartas: aumentar en las que tienen menos de 4x (de mayor a menor qty)
+        candidatos = sorted([(i, q) for i, q in entradas if q < 4], key=lambda x: -x[1])
+        for idx, qty in candidatos:
+            if diferencia <= 0:
+                break
+            aumento = min(4 - qty, diferencia)
+            lineas[idx] = _set_qty(lineas[idx], qty + aumento)
+            diferencia -= aumento
+    else:
+        # Sobran cartas: reducir en las que tienen más copies (de mayor a menor qty)
+        candidatos = sorted([(i, q) for i, q in entradas if q > 1], key=lambda x: -x[1])
+        for idx, qty in candidatos:
+            if diferencia >= 0:
+                break
+            reduccion = min(qty - 1, -diferencia)
+            lineas[idx] = _set_qty(lineas[idx], qty - reduccion)
+            diferencia += reduccion
+
+    return "\n".join(lineas)
 
 
 def _extraer_colores(leader_cards: list[dict]) -> list[str]:
@@ -262,13 +310,14 @@ class Deck(commands.Cog):
         )
 
         try:
-            respuesta = await ask_coach(prompt, max_tokens=DECK_MAX_TOKENS)
+            respuesta = await ask_coach(prompt, max_tokens=DECK_MAX_TOKENS, model=AI_MODEL_DECK)
         except Exception as e:
             await interaction.followup.send(
                 embed=embed_error("Error al armar el mazo", str(e)), ephemeral=True
             )
             return
 
+        respuesta = _ajustar_a_50(respuesta)
         total_cartas = _contar_cartas(respuesta)
 
         if len(respuesta) > 4000:

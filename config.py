@@ -5,7 +5,8 @@ AI_MAX_TOKENS        = 700   # /coach  — respuestas de estrategia y reglas
 AI_MAX_TOKENS_DECK   = 1200  # /mazo   — lista de 50 cartas + estrategia
 AI_MAX_TOKENS_MATCHUP = 600  # /matchup — análisis estructurado
 
-AI_MODEL = "claude-haiku-4-5-20251001"
+AI_MODEL        = "claude-haiku-4-5-20251001"   # /coach, /matchup, /regla, /carta
+AI_MODEL_DECK   = "claude-sonnet-4-6"           # /mazo — requiere conteo preciso
 
 COLORS = {
     "coach": 0x9B59B6,
