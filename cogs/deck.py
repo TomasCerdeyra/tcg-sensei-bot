@@ -1,4 +1,5 @@
 import re
+import random
 from typing import Optional
 import discord
 from discord.ext import commands
@@ -115,21 +116,19 @@ _BUDGET_RARITY = {
     "alto":  "PRESUPUESTO ALTO: sin restricción de rareza. Priorizá el poder competitivo por sobre el costo.",
 }
 
+# Líderes meta OP-15 por estilo. Selección aleatoria para dar variedad al usuario.
+_META_LIDERES = {
+    "agresivo": ["Lucy", "Monkey D. Luffy"],
+    "control":  ["Sakazuki", "Nami"],
+    "combo":    ["Enel", "Monkey D. Luffy"],
+    "flexible": ["Enel", "Sakazuki", "Nami", "Lucy", "Monkey D. Luffy"],
+}
 
-async def _elegir_lider_meta(pres: str, est: str) -> str:
-    """Llama a Haiku para elegir el mejor líder del meta OP-15 según parámetros."""
-    prompt = (
-        f"Meta actual de One Piece TCG: OP-15 (Adventure on Kami's Island).\n"
-        f"Presupuesto: {pres}. Estilo de juego: {est}.\n"
-        "¿Cuál es el líder más competitivo para estos parámetros en el meta actual?\n"
-        "Respondé ÚNICAMENTE con el nombre del líder, sin explicación ni puntuación extra.\n"
-        "Ejemplos de formato correcto: Enel / Monkey D. Luffy / Charlotte Katakuri / Sakazuki"
-    )
-    try:
-        nombre = await ask_coach(prompt, max_tokens=20)
-        return nombre.strip().strip('"').strip("'").split("\n")[0].strip()
-    except Exception:
-        return "Enel"
+
+def _elegir_lider_meta(est: str) -> str:
+    """Selecciona aleatoriamente un líder del meta OP-15 según estilo de juego."""
+    pool = _META_LIDERES.get(est, _META_LIDERES["flexible"])
+    return random.choice(pool)
 
 
 def _extraer_colores(leader_cards: list[dict]) -> list[str]:
@@ -242,9 +241,9 @@ class Deck(commands.Cog):
         leader_effect = ""
         lider_auto = False
 
-        # Si no se especificó líder, elegir el mejor del meta con Haiku
+        # Si no se especificó líder, elegir aleatoriamente del meta OP-15
         if not lider:
-            lider = await _elegir_lider_meta(pres, est)
+            lider = _elegir_lider_meta(est)
             lider_auto = True
 
         if lider:
@@ -315,7 +314,8 @@ class Deck(commands.Cog):
         lider_display = (all_leaders[0]['name'] if all_leaders else lider) or "meta OP-15"
 
         pool_rule = (
-            "2. Usá ÚNICAMENTE cartas del pool provisto. No uses cartas que no estén en esa lista.\n"
+            "2. Usá ÚNICAMENTE cartas del pool provisto. No uses cartas que no estén en esa lista. "
+            "Ignorá todo conocimiento previo de mazos — el pool es tu única fuente válida.\n"
             if pool_texto else
             "2. Usá únicamente cartas reales y conocidas de One Piece TCG.\n"
         )
@@ -336,11 +336,11 @@ class Deck(commands.Cog):
             "de cartas, explicaciones de por qué elegiste cartas, secciones de verificación, totales matemáticos, "
             "conteos visibles, o cualquier texto fuera del formato de abajo. Si lo incluís, la respuesta es incorrecta.\n\n"
             "FORMATO EXACTO:\n\n"
-            "**LÍDER:** [nombre y color]\n\n"
+            "**LÍDER:** [nombre] ([ID del pool]) — [color]\n\n"
             "**MAZO (50 cartas exactas):**\n"
-            "4x NombreCarta #EXP\n"
-            "3x OtraCarta\n"
-            "...\n\n"
+            "4x NombreCarta #OP15-067\n"
+            "3x OtraCarta #OP14-083\n"
+            "... (OBLIGATORIO: cada carta lleva su #ID exacto del pool — NO inventes IDs)\n\n"
             "**ESTRATEGIA:** [2-3 oraciones: win condition, curva, sinergia principal]\n\n"
             "**FAVORABLE vs:** [mazo] — [razón mecánica]\n"
             "**DIFÍCIL vs:** [mazo] — [razón mecánica]"
