@@ -23,8 +23,16 @@ class Coach(commands.Cog):
 
         await interaction.response.defer()
 
+        prompt = (
+            f"{pregunta}\n\n"
+            "Respondé de forma concisa y directa para un mensaje de Discord. "
+            "Máximo 4 párrafos cortos o una lista de hasta 5 puntos breves. "
+            "No uses headers para cada punto menor. Nada de introducciones ni cierres genéricos. "
+            "Si la pregunta es simple, una respuesta simple alcanza."
+        )
+
         try:
-            respuesta = await ask_coach(pregunta)
+            respuesta = await ask_coach(prompt)
         except Exception as e:
             await interaction.followup.send(
                 embed=embed_error("Error al consultar la IA", str(e)), ephemeral=True

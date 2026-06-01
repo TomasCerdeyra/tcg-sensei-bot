@@ -51,22 +51,18 @@ class Matchup(commands.Cog):
         await interaction.response.defer()
 
         prompt = (
-            f"Analizo el matchup de One Piece TCG formato OP-15:\n"
+            f"Matchup One Piece TCG — meta OP-15:\n"
             f"MI MAZO: {mi_mazo}\n"
             f"RIVAL: {rival}\n\n"
-            "Respondé con este formato EXACTO:\n\n"
-            "**VENTAJA:** [quién tiene ventaja y por qué en 1-2 oraciones basado en mecánicas reales]\n\n"
-            "**MI PLAN DE JUEGO:**\n"
-            "- Mulligan: [qué buscar en la mano inicial]\n"
-            "- Turno 1-3: [qué hacer en los primeros turnos]\n"
-            "- Turno 4+: [cómo cerrar o estabilizar]\n\n"
-            "**CARTAS CLAVE de mi mazo para este matchup:** [lista con nombre #EXP y razón breve]\n\n"
-            "**CARTAS A TENER EN CUENTA del rival:** [lista con nombre #EXP y por qué son peligrosas]\n\n"
-            "REGLAS:\n"
-            "- One Piece TCG NO tiene side deck. Solo jugás con el mazo principal.\n"
-            "- Usá los winrates y datos del meta OP-15 que conocés para contextualizar la ventaja.\n"
-            "- Basate en mecánicas reales (DON!!, counter, Rush, Blocker, Trigger).\n"
-            "- Si hay ambigüedad de versión de mazo, elegí la más competitiva en OP-15."
+            "Formato EXACTO — breve y directo, pensado para Discord:\n\n"
+            "**VENTAJA:** [quién tiene ventaja — 1 oración con razón mecánica concreta]\n\n"
+            "**PLAN DE JUEGO:**\n"
+            "Mulligan: [1 línea — qué buscar]\n"
+            "Turnos 1-3: [2 líneas — presión, setup o defensa]\n"
+            "Turno 4+: [2 líneas — cómo cerrar o estabilizar]\n\n"
+            "**MIS CARTAS CLAVE:** [3-4 cartas — solo nombre y razón breve, sin IDs]\n\n"
+            "**PELIGROS del rival:** [3-4 cartas — solo nombre y por qué son peligrosas]\n\n"
+            "Reglas: mecánicas reales, sin side deck, meta OP-15."
         )
 
         try:

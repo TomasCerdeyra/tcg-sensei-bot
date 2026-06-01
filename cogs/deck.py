@@ -118,10 +118,10 @@ _BUDGET_RARITY = {
 
 # Líderes meta OP-15 por estilo. Selección aleatoria para dar variedad al usuario.
 _META_LIDERES = {
-    "agresivo": ["Lucy", "Monkey D. Luffy"],
+    "agresivo": ["Lucy", "Luffy"],
     "control":  ["Sakazuki", "Nami"],
-    "combo":    ["Enel", "Monkey D. Luffy"],
-    "flexible": ["Enel", "Sakazuki", "Nami", "Lucy", "Monkey D. Luffy"],
+    "combo":    ["Enel", "Luffy"],
+    "flexible": ["Enel", "Sakazuki", "Nami", "Lucy", "Luffy"],
 }
 
 
