@@ -24,8 +24,9 @@ _DECKBUILDING_RULES = """\
 REGLAS OBLIGATORIAS de One Piece TCG (aplicá sin excepción):
 - El mazo principal tiene EXACTAMENTE 50 cartas. El líder y el mazo Don!! son aparte y NO se cuentan.
 - Máximo 4 copias del mismo número de carta.
-- Solo cartas del color del líder elegido.
+- COLOR MULTICOLOR: Si el líder tiene dos colores (ej. Green/Black), podés usar cualquier carta que comparta AL MENOS UNO de esos colores. No necesitás que la carta tenga AMBOS colores.
 - Antes de escribir la lista final, contá INTERNAMENTE las cartas línea por línea. Si no dan 50, ajustá cantidades hasta que den exactamente 50. NO incluyas ese conteo ni verificación en tu respuesta — es un paso interno tuyo.
+- SILENCIO ABSOLUTO SOBRE EL POOL: Nunca menciones el pool de cartas, nunca analices qué cartas son compatibles, nunca expliques por qué elegiste o descartaste cartas del pool. Esa es tu lógica interna. Solo mostrá el resultado final.
 
 CRITERIOS ESTRATÉGICOS que DEBÉS cumplir:
 1. COUNTER (defensa): incluí 14-18 cartas con valor counter (ctr 1000 o 2000). Sin counters el mazo pierde.
@@ -249,12 +250,18 @@ class Deck(commands.Cog):
             if all_colors:
                 pool_cards = await buscar_pool_para_mazo(all_colors)
                 if pool_cards:
+                    color_rule = (
+                        f"REGLA MULTICOLOR: El líder tiene colores {'/'.join(all_colors)}. "
+                        f"Podés usar cualquier carta que tenga AL MENOS UNO de esos colores. "
+                        f"Todas las cartas de este pool ya cumplen esa condición — son todas válidas.\n"
+                    )
                     pool_texto = (
-                        f"POOL DE CARTAS DISPONIBLES "
-                        f"(colores: {'/'.join(all_colors)}, {len(pool_cards)} cartas con efectos completos):\n"
+                        f"POOL DE CARTAS DISPONIBLES ({len(pool_cards)} cartas — todas jugables con este líder):\n"
+                        f"{color_rule}"
                         f"{_formatear_pool(pool_cards)}\n\n"
-                        "RESTRICCIÓN ABSOLUTA: Solo podés usar cartas de este pool. "
-                        "No uses cartas que no estén en esta lista.\n\n"
+                        "RESTRICCIÓN ABSOLUTA: Solo podés usar cartas de este pool. No uses cartas que no estén en esta lista.\n"
+                        "NO MENCIONES EL POOL EN TU RESPUESTA. No analices, no expliques, no hagas referencia al pool. "
+                        "Pasá directamente al mazo.\n\n"
                     )
 
         # Sección de líderes en el prompt
@@ -296,8 +303,9 @@ class Deck(commands.Cog):
             "REGLAS DE EJECUCIÓN — OBLIGATORIAS:\n"
             "1. NUNCA hagas preguntas ni pidas aclaraciones. Ejecutá siempre con criterio propio.\n"
             f"{pool_rule}"
-            "3. PROHIBIDO en la respuesta: secciones de verificación, totales matemáticos, conteos, "
-            "notas sobre el pool, justificaciones o cualquier texto fuera del formato de abajo.\n\n"
+            "3. PROHIBIDO en la respuesta: cualquier mención al pool (ni una palabra), análisis de compatibilidad "
+            "de cartas, explicaciones de por qué elegiste cartas, secciones de verificación, totales matemáticos, "
+            "conteos visibles, o cualquier texto fuera del formato de abajo. Si lo incluís, la respuesta es incorrecta.\n\n"
             "FORMATO EXACTO:\n\n"
             "**LÍDER:** [nombre y color]\n\n"
             "**MAZO (50 cartas exactas):**\n"
