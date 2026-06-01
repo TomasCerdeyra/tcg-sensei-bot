@@ -22,6 +22,7 @@ bot = commands.Bot(
 )
 
 COGS = [
+    "cogs.help",
     "cogs.coach",
     "cogs.meta",
     "cogs.deck",

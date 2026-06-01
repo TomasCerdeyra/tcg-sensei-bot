@@ -60,8 +60,8 @@ class Matchup(commands.Cog):
             "Mulligan: [1 línea — qué buscar]\n"
             "Turnos 1-3: [2 líneas — presión, setup o defensa]\n"
             "Turno 4+: [2 líneas — cómo cerrar o estabilizar]\n\n"
-            "**MIS CARTAS CLAVE:** [3-4 cartas — solo nombre y razón breve, sin IDs]\n\n"
-            "**PELIGROS del rival:** [3-4 cartas — solo nombre y por qué son peligrosas]\n\n"
+            "**MIS CARTAS CLAVE:** [3-4 cartas — Nombre: razón en 6 palabras max, sin IDs]\n\n"
+            "**PELIGROS del rival:** [3-4 cartas — Nombre: razón en 6 palabras max]\n\n"
             "Reglas: mecánicas reales, sin side deck, meta OP-15."
         )
 
