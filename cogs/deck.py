@@ -109,6 +109,29 @@ def _ajustar_a_50(respuesta: str) -> str:
     return "\n".join(lineas)
 
 
+_BUDGET_RARITY = {
+    "bajo":  "PRESUPUESTO BAJO: priorizá cartas C (Common) y UC (Uncommon). Máximo 4 cartas SR (Super Rare) en el mazo. Evitá SP y SEC.",
+    "medio": "PRESUPUESTO MEDIO: podés incluir cartas R (Rare) y hasta 8 SR (Super Rare). Evitá SP y SEC.",
+    "alto":  "PRESUPUESTO ALTO: sin restricción de rareza. Priorizá el poder competitivo por sobre el costo.",
+}
+
+
+async def _elegir_lider_meta(pres: str, est: str) -> str:
+    """Llama a Haiku para elegir el mejor líder del meta OP-15 según parámetros."""
+    prompt = (
+        f"Meta actual de One Piece TCG: OP-15 (Adventure on Kami's Island).\n"
+        f"Presupuesto: {pres}. Estilo de juego: {est}.\n"
+        "¿Cuál es el líder más competitivo para estos parámetros en el meta actual?\n"
+        "Respondé ÚNICAMENTE con el nombre del líder, sin explicación ni puntuación extra.\n"
+        "Ejemplos de formato correcto: Enel / Monkey D. Luffy / Charlotte Katakuri / Sakazuki"
+    )
+    try:
+        nombre = await ask_coach(prompt, max_tokens=20)
+        return nombre.strip().strip('"').strip("'").split("\n")[0].strip()
+    except Exception:
+        return "Enel"
+
+
 def _extraer_colores(leader_cards: list[dict]) -> list[str]:
     """Extrae los colores del líder desde resultados del scraper (fallback)."""
     for card in leader_cards:
@@ -125,12 +148,12 @@ def _formatear_pool(cards: list[dict]) -> str:
     lineas = []
     for c in cards:
         card_id = c.get("id", "")
-        exp = ""
-        if card_id:
-            m = re.match(r"([A-Z]+\d+)", card_id)
-            exp = f" #{m.group(1)}" if m else ""
+        clean_id = re.sub(r"_(p|r)\d+$", "", card_id) if card_id else ""
+        exp = f" #{clean_id}" if clean_id else ""
 
         tipo = c.get("type", "")
+        raridad = c.get("rarity", "")
+        raridad_str = f" {raridad}" if raridad else ""
         costo = f" c:{c['cost']}" if c.get("cost") is not None else ""
         poder = f" p:{c['power']}" if c.get("power") is not None else ""
         counter = f" ctr:{c['counter']}" if c.get("counter") is not None else ""
@@ -140,7 +163,7 @@ def _formatear_pool(cards: list[dict]) -> str:
         efecto = (c.get("effect") or "").strip()
         efecto_str = f"\n  → {efecto[:160]}" if efecto else ""
 
-        lineas.append(f"- {c['name']}{exp} ({tipo}{costo}{poder}{counter}{kw_str}){efecto_str}")
+        lineas.append(f"- {c['name']}{exp} ({tipo}{raridad_str}{costo}{poder}{counter}{kw_str}){efecto_str}")
     return "\n".join(lineas)
 
 
@@ -217,6 +240,12 @@ class Deck(commands.Cog):
         all_colors: list[str] = []
         pool_texto = ""
         leader_effect = ""
+        lider_auto = False
+
+        # Si no se especificó líder, elegir el mejor del meta con Haiku
+        if not lider:
+            lider = await _elegir_lider_meta(pres, est)
+            lider_auto = True
 
         if lider:
             # Buscar líderes por nombre en punk-records
@@ -281,12 +310,9 @@ class Deck(commands.Cog):
         elif lider:
             leaders_section = f"Líder pedido: '{lider}' (no encontrado en el índice — usá tu conocimiento del meta OP-15).\n\n"
         else:
-            leaders_section = (
-                "No se especificó líder. Elegí el líder más competitivo de OP-15 "
-                f"para presupuesto '{pres}' y estilo '{est}', y armá el mazo con su color.\n\n"
-            )
+            leaders_section = ""
 
-        lider_display = lider or "meta OP-15"
+        lider_display = (all_leaders[0]['name'] if all_leaders else lider) or "meta OP-15"
 
         pool_rule = (
             "2. Usá ÚNICAMENTE cartas del pool provisto. No uses cartas que no estén en esa lista.\n"
@@ -294,12 +320,15 @@ class Deck(commands.Cog):
             "2. Usá únicamente cartas reales y conocidas de One Piece TCG.\n"
         )
 
+        budget_guide = _BUDGET_RARITY.get(pres, _BUDGET_RARITY["medio"])
+
         prompt = (
             f"{_DECKBUILDING_RULES}\n"
             f"{leaders_section}"
             f"{pool_texto}"
             f"Armame un mazo competitivo de One Piece TCG "
-            f"(presupuesto: {pres}, estilo: {est}).\n\n"
+            f"(estilo: {est}).\n"
+            f"{budget_guide}\n\n"
             "REGLAS DE EJECUCIÓN — OBLIGATORIAS:\n"
             "1. NUNCA hagas preguntas ni pidas aclaraciones. Ejecutá siempre con criterio propio.\n"
             f"{pool_rule}"
@@ -342,8 +371,10 @@ class Deck(commands.Cog):
             color=COLORS["deck"],
         )
         colores_str = "/".join(all_colors) if all_colors else "meta"
+        auto_str = "Líder auto" if lider_auto else None
         footer_parts = [p for p in [
             aviso_count,
+            auto_str,
             f"Pool: {colores_str}",
             f"Presupuesto: {pres} | Estilo: {est} | Consultas /mazo hoy: {count}/10",
         ] if p]
