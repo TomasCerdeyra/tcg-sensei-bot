@@ -18,11 +18,33 @@ class ResumenReglas(commands.Cog):
         description="📄 Descargá el resumen visual oficial de las reglas de One Piece TCG",
     )
     async def resumen_reglas(self, interaction: discord.Interaction) -> None:
+        drive_url = os.getenv("PDF_DRIVE_URL", "").strip()
+
+        embed = discord.Embed(
+            title="📄 Resumen Visual de Reglas — One Piece TCG",
+            color=COLORS["coach"],
+        )
+        embed.set_footer(text="📄 Sin límite de uso | Manual Oficial Bandai")
+
+        # Si hay URL de Drive configurada, mostrar el link
+        if drive_url:
+            embed.description = (
+                "Resumen oficial de las reglas del juego en formato visual.\n\n"
+                f"[Descargar PDF desde Google Drive]({drive_url})\n\n"
+                "Para preguntas específicas sobre reglas usá `/regla`."
+            )
+            await interaction.response.send_message(embed=embed)
+            return
+
+        # Fallback: intentar enviar el archivo local (dev / entorno con el PDF)
         if not os.path.exists(_PDF_PATH):
             await interaction.response.send_message(
                 embed=discord.Embed(
-                    title="❌ Archivo no encontrado",
-                    description="El PDF de resumen no está disponible en este momento.",
+                    title="❌ PDF no disponible",
+                    description=(
+                        "El PDF no está disponible en este momento.\n"
+                        "Configurá `PDF_DRIVE_URL` en el `.env` para habilitarlo."
+                    ),
                     color=COLORS["error"],
                 ),
                 ephemeral=True,
@@ -33,16 +55,11 @@ class ResumenReglas(commands.Cog):
 
         try:
             file = discord.File(_PDF_PATH, filename=_PDF_NAME)
-            embed = discord.Embed(
-                title="📄 Resumen Visual de Reglas — One Piece TCG",
-                description=(
-                    "Resumen oficial de las reglas del juego en formato visual.\n\n"
-                    "Podés abrirlo directamente en Discord o descargarlo.\n\n"
-                    "Para preguntas específicas sobre reglas usá `/regla`."
-                ),
-                color=COLORS["coach"],
+            embed.description = (
+                "Resumen oficial de las reglas del juego en formato visual.\n\n"
+                "Podés abrirlo directamente en Discord o descargarlo.\n\n"
+                "Para preguntas específicas sobre reglas usá `/regla`."
             )
-            embed.set_footer(text="📄 Sin límite de uso | Manual Oficial Bandai")
             await interaction.followup.send(embed=embed, file=file)
 
         except Exception as e:

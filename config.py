@@ -1,4 +1,5 @@
-AI_DAILY_LIMIT = 10
+AI_DAILY_LIMIT   = 10
+MAZO_DAILY_LIMIT = 5
 
 # Tokens máximos por comando (ajustables sin tocar los cogs)
 AI_MAX_TOKENS        = 700   # /coach  — respuestas de estrategia y reglas

@@ -14,16 +14,16 @@ def embed_error(titulo: str, descripcion: str) -> discord.Embed:
     )
 
 
-def embed_limite() -> discord.Embed:
+def embed_limite(limite: int = 10) -> discord.Embed:
     """Embed amarillo para cuando se alcanzó el límite diario."""
     return discord.Embed(
         title="⏳ Límite diario alcanzado",
         description=(
-            "Usaste tus **10 consultas** de este comando para hoy.\n"
+            f"Usaste tus **{limite} consultas** de este comando para hoy.\n"
             "El contador se reinicia a medianoche.\n\n"
-            "Cada comando IA tiene su propio límite de 10/día:\n"
+            "Límites diarios por comando IA:\n"
             "- `/coach` — 10 preguntas libres\n"
-            "- `/mazo` — 10 sugerencias de mazo\n"
+            "- `/mazo` — 5 sugerencias de mazo\n"
             "- `/matchup` — 10 análisis de matchup\n"
             "- `/regla` — 10 consultas complejas (glosario es ilimitado)\n\n"
             "Los comandos `/meta`, `/carta`, `/precio` y `/resumen-reglas` son **ilimitados**."

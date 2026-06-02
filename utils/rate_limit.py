@@ -7,14 +7,14 @@ import os
 import sqlite3
 from collections import defaultdict
 from datetime import date, datetime
-from config import AI_DAILY_LIMIT
+from config import AI_DAILY_LIMIT, MAZO_DAILY_LIMIT
 
 _DB_PATH = "data/rate_limit.db"
 
 # Límites por comando
 _LIMITES: dict[str, int] = {
     "coach":   AI_DAILY_LIMIT,
-    "mazo":    AI_DAILY_LIMIT,
+    "mazo":    MAZO_DAILY_LIMIT,
     "matchup": AI_DAILY_LIMIT,
     "regla":   AI_DAILY_LIMIT,
     "_global": AI_DAILY_LIMIT,

@@ -17,11 +17,11 @@ class Help(commands.Cog):
         )
 
         embed.add_field(
-            name="🤖 Con IA — 10 consultas por día",
+            name="🤖 Con IA — límite diario",
             value=(
-                "`/coach [pregunta]` — Estrategia, reglas, meta, lo que quieras\n"
-                "`/mazo [líder]` — Mazo competitivo (líder, presupuesto y estilo son opcionales)\n"
-                "`/matchup [mi_mazo] [rival]` — Plan de juego para ganarle a un rival"
+                "`/coach [pregunta]` — Estrategia, reglas, meta, lo que quieras *(10/día)*\n"
+                "`/mazo [líder]` — Mazo competitivo (líder, presupuesto y estilo son opcionales) *(5/día)*\n"
+                "`/matchup [mi_mazo] [rival]` — Plan de juego para ganarle a un rival *(10/día)*"
             ),
             inline=False,
         )
@@ -42,7 +42,7 @@ class Help(commands.Cog):
             name="💡 Tips",
             value=(
                 "• En `/mazo` podés no poner líder — el coach elige el mejor del meta\n"
-                "• El límite de 10/día aplica solo a los comandos con IA\n"
+                "• El límite diario aplica solo a los comandos con IA (/mazo tiene 5/día)\n"
                 "• Si un comando tarda, es normal — está consultando la IA en tiempo real"
             ),
             inline=False,

@@ -226,7 +226,7 @@ class Deck(commands.Cog):
     ) -> None:
         if not puede_usar(interaction.user.id, "mazo"):
             await interaction.response.send_message(
-                embed=embed_limite(), ephemeral=True
+                embed=embed_limite(5), ephemeral=True
             )
             return
 
@@ -376,7 +376,7 @@ class Deck(commands.Cog):
             aviso_count,
             auto_str,
             f"Pool: {colores_str}",
-            f"Presupuesto: {pres} | Estilo: {est} | Consultas /mazo hoy: {count}/10",
+            f"Presupuesto: {pres} | Estilo: {est} | Consultas /mazo hoy: {count}/5",
         ] if p]
         embed.set_footer(text=" | ".join(footer_parts))
         await interaction.followup.send(embed=embed)
