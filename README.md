@@ -125,7 +125,6 @@ PDF_DRIVE_URL=
 - `LIMITLESS_API_KEY` / `LIMITLESS_WEBHOOK_SECRET` solo son necesarios si vas a usar `scripts/webhook_handler.py` para automatizar la actualización del meta desde torneos de Limitless TCG.
 - `PDF_DRIVE_URL` es opcional: un link de Google Drive para `/resumen-reglas`. Si lo dejás vacío, el comando intenta servir el PDF local en `knowledge/`.
 
-⚠️ Nunca subas tu `.env` a GitHub — ya está incluido en `.gitignore`.
 
 ### 6. Ejecutar el bot
 
